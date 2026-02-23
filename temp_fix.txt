@@ -1,0 +1,26 @@
+186:   // 创建敌人子弹
+187:   createEnemyBullet(x: number, y: number): void {
+188:     const bullet = new Bullet(
+189:       x,
+190:       y,
+191:       this.config.bulletSpeed * 0.6,
+192:       1,
+193:       false
+194:     );
+195:     this.bullets.push(bullet);
+196:     this.bullets.push(bullet);
+197:   }
+198:   
+199:   // 创建跟踪弹
+200:   createTrackingBullet(x: number, y: number, targetX: number): void {
+201:     const bullet = new Bullet(
+202:       x,
+203:       y,
+204:       this.config.bulletSpeed * 0.8,
+205:       this.config.bulletDamage,
+206:       true,
+207:       'tracking'
+208:     );
+209:     bullet.setTarget(targetX);
+210:     this.bullets.push(bullet);
+211:   }

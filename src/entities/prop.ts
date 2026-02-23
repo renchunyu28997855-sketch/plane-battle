@@ -8,17 +8,42 @@ import { checkCollision } from '../utils';
 /**
  * 道具类型
  */
-export type PropType = 'shield' | 'speed' | 'multiShot' | 'power' | 'score';
+export type PropType = 'shield' | 'normal' | 'spread' | 'tracking' | 'laser' | 'score';
 
 /**
  * 道具颜色映射
  */
 const PROP_COLORS: Record<PropType, string> = {
   shield: '#00ffff',
-  speed: '#ffff00',
-  multiShot: '#9b59b6',
-  power: '#e74c3c',
+  normal: '#f1c40f',
+  spread: '#9b59b6',
+  tracking: '#00ffff',
+  laser: '#e74c3c',
   score: '#ffd700',
+};
+
+/**
+ * 道具图标映射
+ */
+const PROP_ICONS: Record<PropType, string> = {
+  shield: '🛡',
+  normal: '🔹',
+  spread: '🔱',
+  tracking: '🎯',
+  laser: '⚡',
+  score: '⭐',
+};
+
+/**
+ * 道具名称映射
+ */
+const PROP_NAMES: Record<PropType, string> = {
+  shield: '护盾',
+  normal: '普通',
+  spread: '散弹',
+  tracking: '追踪',
+  laser: '激光',
+  score: '金币',
 };
 
 /**
@@ -41,8 +66,6 @@ export class Prop {
 
   // 下落速度
   private readonly speed = 2;
-
-
 
   // 构造函数
   constructor(x: number, y: number, type: PropType) {
@@ -122,26 +145,13 @@ export class Prop {
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const icon = this.getIcon();
+    const icon = PROP_ICONS[this.type];
     ctx.fillText(icon, this.x, this.y);
   }
 
-  // 获取道具图标
-  private getIcon(): string {
-    switch (this.type) {
-      case 'shield':
-        return '🛡';
-      case 'speed':
-        return '⚡';
-      case 'multiShot':
-        return '🔱';
-      case 'power':
-        return '💥';
-      case 'score':
-        return '⭐';
-      default:
-        return '?';
-    }
+  // 获取道具名称
+  getName(): string {
+    return PROP_NAMES[this.type];
   }
 
   // 颜色变暗辅助函数

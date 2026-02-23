@@ -9,7 +9,7 @@ import { Prop, type PropType } from './prop';
 /**
  * 道具类型数组
  */
-const PROP_TYPES: PropType[] = ['shield', 'speed', 'multiShot', 'power', 'score'];
+const PROP_TYPES: PropType[] = ['shield', 'normal', 'spread', 'tracking', 'laser', 'score'];
 
 /**
  * 道具管理器类

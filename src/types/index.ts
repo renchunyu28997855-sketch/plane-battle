@@ -119,7 +119,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 700,
     enemySpeed: 3,
     bossLevel: false,
-    levelTime: 50,
+    levelTime: 60,
   },
   {
     level: 5,
@@ -128,6 +128,6 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 600,
     enemySpeed: 3.5,
     bossLevel: true,
-    levelTime: 50,
+    levelTime: 80,
   },
 ];

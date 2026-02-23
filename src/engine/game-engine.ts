@@ -188,6 +188,7 @@ export class GameEngine {
     this.propManager.update(deltaTime);
     this.updateSpawning(deltaTime);
     this.updateEnemyShooting();
+    this.updateTrackingBullets();
     this.checkCollisions();
     this.checkGameState();
   }
@@ -237,17 +238,20 @@ export class GameEngine {
     }
   }
   
+  private updateTrackingBullets(): void {
+    const enemies = this.enemyManager.getEnemies();
+    this.bulletManager.updateTrackingTargets(enemies);
+  }
+  
   private checkCollisions(): void {
     const playerBullets = this.bulletManager.getPlayerBullets();
     const enemies = this.enemyManager.getEnemies();
     
     for (const bullet of playerBullets) {
       for (const enemy of enemies) {
-        if (bullet.active && enemy.active && bullet.checkCollision(enemy)) {
+        if (bullet.active && enemy.active && bullet.checkCollision(enemy.getRect())) {
           bullet.active = false;
-          // 应用玩家伤害倍数
-          const damage = Math.floor(bullet.damage * this.player.getDamageMultiplier());
-          enemy.takeDamage(damage);
+          enemy.takeDamage(bullet.damage);
           
           if (enemy.isDestroyed()) {
             // 30% 概率生成道具
@@ -264,7 +268,7 @@ export class GameEngine {
     
     const enemyBullets = this.bulletManager.getEnemyBullets();
     for (const bullet of enemyBullets) {
-      if (bullet.active && bullet.checkCollision(this.player)) {
+      if (bullet.active && bullet.checkCollision(this.player.getRect())) {
         bullet.active = false;
         this.player.takeDamage(bullet.damage);
       }
@@ -293,32 +297,32 @@ export class GameEngine {
   
   // 应用道具效果
   private applyPropEffect(type: PropType): void {
+    const level = this.player.bulletLevel;
+    
     switch (type) {
       case 'shield':
         this.player.applyShield();
-        this.showBuffMessage('护盾 +1');
+        this.showBuffMessage(`护盾 +1`);
         break;
-      case 'speed':
-        // 速度、散弹、力量互斥，新 buff 取消旧 buff
-        this.player.resetBulletBuffs();
-        this.player.applySpeed();
-        this.showBuffMessage('加速');
+      case 'normal':
+        this.player.applyNormal();
+        this.showBuffMessage(`普通 Lv.${level}`);
         break;
-      case 'multiShot':
-        // 速度、散弹、力量互斥，新 buff 取消旧 buff
-        this.player.resetBulletBuffs();
-        this.player.applyMultiShot();
-        this.showBuffMessage('散弹');
+      case 'spread':
+        this.player.applySpread();
+        this.showBuffMessage(`散弹 Lv.${this.player.bulletLevel}`);
         break;
-      case 'power':
-        // 速度、散弹、力量互斥，新 buff 取消旧 buff
-        this.player.resetBulletBuffs();
-        this.player.applyPower();
-        this.showBuffMessage('力量');
+      case 'tracking':
+        this.player.applyTracking();
+        this.showBuffMessage(`追踪 Lv.${this.player.bulletLevel}`);
+        break;
+      case 'laser':
+        this.player.applyLaser();
+        this.showBuffMessage(`激光 Lv.${this.player.bulletLevel}`);
         break;
       case 'score':
         this.score += 100;
-        this.showBuffMessage('分数 +100');
+        this.showBuffMessage('金币 +100');
         break;
     }
   }
@@ -399,24 +403,31 @@ export class GameEngine {
     this.ctx.font = '16px Arial';
     this.ctx.textAlign = 'right';
     let buffY = 25;
+    
+    // 护盾
     if (this.player.shield > 0) {
       this.ctx.fillStyle = '#00ffff';
       this.ctx.fillText(`护盾: ${this.player.shield}`, this.config.canvasWidth - 10, buffY);
       buffY += 20;
     }
-    if (this.player.speedLevel > 0) {
-      this.ctx.fillStyle = '#ffff00';
-      this.ctx.fillText(`加速: ${this.player.speedLevel}`, this.config.canvasWidth - 10, buffY);
-      buffY += 20;
-    }
-    if (this.player.multiShotLevel > 0) {
-      this.ctx.fillStyle = '#9b59b6';
-      this.ctx.fillText(`散弹: ${this.player.multiShotLevel}`, this.config.canvasWidth - 10, buffY);
-      buffY += 20;
-    }
-    if (this.player.powerLevel > 0) {
-      this.ctx.fillStyle = '#e74c3c';
-      this.ctx.fillText(`力量: ${this.player.powerLevel}`, this.config.canvasWidth - 10, buffY);
+    
+    // 子弹类型和等级
+    if (this.player.bulletLevel > 0) {
+      const bulletTypeNames: Record<string, string> = {
+        normal: '普通',
+        spread: '散弹',
+        tracking: '追踪',
+        laser: '激光',
+      };
+      const typeName = bulletTypeNames[this.player.bulletType] || '普通';
+      const bulletColors: Record<string, string> = {
+        normal: '#f1c40f',
+        spread: '#9b59b6',
+        tracking: '#00ffff',
+        laser: '#e74c3c',
+      };
+      this.ctx.fillStyle = bulletColors[this.player.bulletType] || '#f1c40f';
+      this.ctx.fillText(`${typeName}: Lv.${this.player.bulletLevel}`, this.config.canvasWidth - 10, buffY);
     }
   }
   

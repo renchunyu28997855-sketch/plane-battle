@@ -7,6 +7,9 @@ import { checkCollision } from '../utils';
 import type { BulletManager } from './bullet-manager';
 import { soundManager } from '../systems/sound-manager';
 
+// 子弹类型
+export type BulletType = 'normal' | 'spread' | 'tracking' | 'laser';
+
 /**
  * 玩家飞机类
  */
@@ -21,17 +24,12 @@ export class Player {
   health = 3;
   maxHealth = 3;
   
-  // 护盾（可叠加）
+  // 护盾（可叠加，最高5层）
   shield = 0;
   
-  // 速度加成（可叠加，每层减少15%射击间隔，最高5层）
-  speedLevel = 0;
-  
-  // 散弹层数（可叠加，最高5层）
-  multiShotLevel = 0;
-  
-  // 力量加成（可叠加，每层+1伤害，最高5层）
-  powerLevel = 0;
+  // 子弹类型和等级
+  bulletType: BulletType = 'normal'; // 当前子弹类型
+  bulletLevel = 1; // 当前子弹等级 1-5
   
   // 射击冷却
   private shootCooldown = 0;
@@ -51,36 +49,36 @@ export class Player {
     this.y = y;
     this.health = this.maxHealth;
     this.shield = 0;
-    this.speedLevel = 0;
-    this.multiShotLevel = 0;
-    this.powerLevel = 0;
+    this.bulletType = 'normal';
+    this.bulletLevel = 1;
     this.shootCooldown = 0;
-  }
-
-  // 重置子弹buff（速度、散弹、力量互斥）
-  resetBulletBuffs(): void {
-    this.speedLevel = 0;
-    this.multiShotLevel = 0;
-    this.powerLevel = 0;
   }
 
   // 射击
   shoot(bulletManager: BulletManager): void {
     if (this.shootCooldown <= 0) {
-      // 根据multiShotLevel决定发射方式
-      if (this.multiShotLevel >= 2) {
-        // 3发散弹
-        bulletManager.createSpreadBullet(this.x, this.y - this.height / 2);
-      } else if (this.multiShotLevel >= 1) {
-        // 2发散弹
-        bulletManager.createSpreadBullet(this.x, this.y - this.height / 2);
-      } else {
-        bulletManager.createPlayerBullet(this.x, this.y - this.height / 2);
+      const y = this.y - this.height / 2;
+      
+      switch (this.bulletType) {
+        case 'normal':
+          // 普通子弹：根据等级增加大小
+          bulletManager.createPlayerBullet(this.x, y, this.bulletLevel);
+          break;
+        case 'spread':
+          // 散弹：根据等级决定数量 2,3,4,5,6
+          bulletManager.createSpreadBullet(this.x, y, this.bulletLevel);
+          break;
+        case 'tracking':
+          // 追踪子弹：速度+15%/级，大小+50%/级
+          bulletManager.createTrackingBullet(this.x, y, this.bulletLevel);
+          break;
+        case 'laser':
+          // 激光子弹：宽度+20%/级，速度+50%/级
+          bulletManager.createLaserBullet(this.x, y, this.bulletLevel);
+          break;
       }
       
-      // 根据speedLevel计算射击间隔（每层减少15%）
-      const interval = this.baseShootInterval * (1 - this.speedLevel * 0.15);
-      this.shootCooldown = Math.max(20, interval); // 最低20ms
+      this.shootCooldown = this.baseShootInterval;
       soundManager.play('shoot');
     }
   }
@@ -106,35 +104,55 @@ export class Player {
     }
   }
 
-  // 应用护盾效果（可叠加）
+  // 应用护盾效果（可叠加，最高5层）
   applyShield(): void {
-    this.shield++;
-  }
-
-  // 应用速度效果（可叠加，最高5层）
-  applySpeed(): void {
-    if (this.speedLevel < 5) {
-      this.speedLevel++;
+    if (this.shield < 5) {
+      this.shield++;
     }
   }
 
-  // 应用散弹效果（可叠加，最高5层）
-  applyMultiShot(): void {
-    if (this.multiShotLevel < 5) {
-      this.multiShotLevel++;
+  // 应用普通子弹（切换类型，等级保留）
+  applyNormal(): void {
+    this.bulletType = 'normal';
+  }
+
+  // 应用散弹（同类升级，异类切换类型，等级保留）
+  applySpread(): void {
+    if (this.bulletType === 'spread') {
+      // 同类子弹，升一级
+      if (this.bulletLevel < 5) {
+        this.bulletLevel++;
+      }
+    } else {
+      // 切换子弹类型，等级保留
+      this.bulletType = 'spread';
     }
   }
 
-  // 应用力量效果（可叠加，每层+1伤害，最高5层）
-  applyPower(): void {
-    if (this.powerLevel < 5) {
-      this.powerLevel++;
+  // 应用追踪子弹（同类升级，异类切换类型，等级保留）
+  applyTracking(): void {
+    if (this.bulletType === 'tracking') {
+      // 同类子弹，升一级
+      if (this.bulletLevel < 5) {
+        this.bulletLevel++;
+      }
+    } else {
+      // 切换子弹类型，等级保留
+      this.bulletType = 'tracking';
     }
   }
 
-  // 获取伤害倍数
-  getDamageMultiplier(): number {
-    return 1 + this.powerLevel;
+  // 应用激光子弹（同类升级，异类切换类型，等级保留）
+  applyLaser(): void {
+    if (this.bulletType === 'laser') {
+      // 同类子弹，升一级
+      if (this.bulletLevel < 5) {
+        this.bulletLevel++;
+      }
+    } else {
+      // 切换子弹类型，等级保留
+      this.bulletType = 'laser';
+    }
   }
 
   // 是否被摧毁

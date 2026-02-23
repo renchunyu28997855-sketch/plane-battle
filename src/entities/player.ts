@@ -21,9 +21,21 @@ export class Player {
   health = 3;
   maxHealth = 3;
   
+  // 护盾
+  shield = 0;
+  
   // 射击冷却
   private shootCooldown = 0;
-  private readonly shootInterval = 200; // 射击间隔（毫秒）
+  private baseShootInterval = 100; // 基础射击间隔（毫秒）
+  private currentShootInterval = 100; // 当前射击间隔
+  
+  // 子弹类型
+  private bulletType: 'normal' | 'spread' = 'normal';
+  private bulletTypeTimer = 0;
+  
+  // 子弹伤害倍数
+  private damageMultiplier = 1;
+  private damageTimer = 0;
   
   // 构造函数
   constructor(x: number, y: number, config: GameConfig) {
@@ -38,14 +50,24 @@ export class Player {
     this.x = x;
     this.y = y;
     this.health = this.maxHealth;
+    this.shield = 0;
     this.shootCooldown = 0;
+    this.currentShootInterval = this.baseShootInterval;
+    this.bulletType = 'normal';
+    this.bulletTypeTimer = 0;
+    this.damageMultiplier = 1;
+    this.damageTimer = 0;
   }
   
   // 射击
   shoot(bulletManager: BulletManager): void {
     if (this.shootCooldown <= 0) {
-      bulletManager.createPlayerBullet(this.x, this.y - this.height / 2);
-      this.shootCooldown = this.shootInterval;
+      if (this.bulletType === 'spread') {
+        bulletManager.createSpreadBullet(this.x, this.y - this.height / 2);
+      } else {
+        bulletManager.createPlayerBullet(this.x, this.y - this.height / 2);
+      }
+      this.shootCooldown = this.currentShootInterval;
       soundManager.play('shoot');
     }
   }
@@ -55,14 +77,66 @@ export class Player {
     if (this.shootCooldown > 0) {
       this.shootCooldown -= deltaTime;
     }
+    
+    // 更新子弹类型计时器
+    if (this.bulletTypeTimer > 0) {
+      this.bulletTypeTimer -= deltaTime;
+      if (this.bulletTypeTimer <= 0) {
+        this.bulletType = 'normal';
+      }
+    }
+    
+    // 更新伤害倍数计时器
+    if (this.damageTimer > 0) {
+      this.damageTimer -= deltaTime;
+      if (this.damageTimer <= 0) {
+        this.damageMultiplier = 1;
+      }
+    }
   }
   
   // 受伤
   takeDamage(damage: number): void {
+    // 如果有护盾，优先消耗护盾
+    if (this.shield > 0) {
+      this.shield--;
+      return;
+    }
     this.health -= damage;
     if (this.health < 0) {
       this.health = 0;
     }
+  }
+  
+  // 应用护盾效果
+  applyShield(): void {
+    this.shield++;
+  }
+  
+  // 应用速度效果
+  applySpeed(duration: number): void {
+    this.currentShootInterval = this.baseShootInterval * 0.5; // 射击速度翻倍
+    // 5秒后恢复
+    setTimeout(() => {
+      this.currentShootInterval = this.baseShootInterval;
+    }, duration);
+  }
+  
+  // 应用散弹效果
+  applyMultiShot(duration: number): void {
+    this.bulletType = 'spread';
+    this.bulletTypeTimer = duration;
+  }
+  
+  // 应用力量效果
+  applyPower(duration: number): void {
+    this.damageMultiplier = 2;
+    this.damageTimer = duration;
+  }
+  
+  // 获取伤害倍数
+  getDamageMultiplier(): number {
+    return this.damageMultiplier;
   }
   
   // 是否被摧毁

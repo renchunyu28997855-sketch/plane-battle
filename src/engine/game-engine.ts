@@ -4,10 +4,12 @@
 
 import type { GameState, GameConfig, LevelConfig, KeyState } from '../types';
 import { DEFAULT_GAME_CONFIG, LEVEL_CONFIGS } from '../types';
-import { clamp } from '../utils';
+import { clamp, randomInt } from '../utils';
+import type { PropType } from '../entities/prop';
 import { Player } from '../entities/player';
 import { BulletManager } from '../entities/bullet-manager';
 import { EnemyManager } from '../entities/enemy-manager';
+import { PropManager } from '../entities/prop-manager';
 import { soundManager } from '../systems/sound-manager';
 
 /**
@@ -23,6 +25,7 @@ export class GameEngine {
   private player: Player;
   private bulletManager: BulletManager;
   private enemyManager: EnemyManager;
+  private propManager: PropManager;
   private keys: KeyState = {
     ArrowUp: false,
     ArrowDown: false,
@@ -49,6 +52,7 @@ export class GameEngine {
     );
     this.bulletManager = new BulletManager(this.config);
     this.enemyManager = new EnemyManager(this.config);
+    this.propManager = new PropManager(this.config);
     
     this.bindEvents();
   }
@@ -103,6 +107,7 @@ export class GameEngine {
     );
     this.bulletManager.clear();
     this.enemyManager.clear();
+    this.propManager.clear();
     this.startGame();
   }
   
@@ -157,6 +162,7 @@ export class GameEngine {
     this.player.update(deltaTime);
     this.bulletManager.update(deltaTime);
     this.enemyManager.update(deltaTime);
+    this.propManager.update(deltaTime);
     this.updateSpawning(deltaTime);
     this.updateEnemyShooting();
     this.checkCollisions();
@@ -216,10 +222,17 @@ export class GameEngine {
       for (const enemy of enemies) {
         if (bullet.active && enemy.active && bullet.checkCollision(enemy)) {
           bullet.active = false;
-          enemy.takeDamage(bullet.damage);
+          // 应用玩家伤害倍数
+          const damage = Math.floor(bullet.damage * this.player.getDamageMultiplier());
+          enemy.takeDamage(damage);
           
           if (enemy.isDestroyed()) {
+            // 30% 概率生成道具
+            if (randomInt(1, 100) <= 30) {
+              this.propManager.spawnRandom(enemy.x, enemy.y);
+            }
             enemy.destroy();
+            soundManager.play('explosion');
             this.score += enemy.score;
           }
         }
@@ -236,9 +249,43 @@ export class GameEngine {
     
     for (const enemy of enemies) {
       if (enemy.active && enemy.checkCollision(this.player)) {
+        // 30% 概率生成道具
+        if (randomInt(1, 100) <= 30) {
+          this.propManager.spawnRandom(enemy.x, enemy.y);
+        }
         enemy.destroy();
         this.player.takeDamage(1);
       }
+    }
+    
+    // 检查玩家与道具的碰撞
+    const props = this.propManager.getProps();
+    for (const prop of props) {
+      if (prop.active && prop.checkCollision(this.player)) {
+        prop.active = false;
+        this.applyPropEffect(prop.type);
+      }
+    }
+  }
+  
+  // 应用道具效果
+  private applyPropEffect(type: PropType): void {
+    switch (type) {
+      case 'shield':
+        this.player.applyShield();
+        break;
+      case 'speed':
+        this.player.applySpeed(5000); // 5秒
+        break;
+      case 'multiShot':
+        this.player.applyMultiShot(5000); // 5秒
+        break;
+      case 'power':
+        this.player.applyPower(5000); // 5秒
+        break;
+      case 'score':
+        this.score += 100;
+        break;
     }
   }
   
@@ -281,6 +328,7 @@ export class GameEngine {
   private renderGame(): void {
     this.enemyManager.render(this.ctx);
     this.bulletManager.render(this.ctx);
+    this.propManager.render(this.ctx);
     this.player.render(this.ctx);
   }
   

@@ -87,7 +87,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
   {
     level: 1,
     name: '第一关',
-    enemyCount: 35,
+    enemyCount: 175,
     spawnInterval: 1200,
     enemySpeed: 1.5,
     bossLevel: false,
@@ -95,7 +95,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
   {
     level: 2,
     name: '第二关',
-    enemyCount: 50,
+    enemyCount: 250,
     spawnInterval: 1000,
     enemySpeed: 2,
     bossLevel: false,
@@ -103,9 +103,25 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
   {
     level: 3,
     name: '第三关',
-    enemyCount: 60,
+    enemyCount: 300,
     spawnInterval: 800,
     enemySpeed: 2.5,
+    bossLevel: false,
+  },
+  {
+    level: 4,
+    name: '第四关',
+    enemyCount: 360,
+    spawnInterval: 700,
+    enemySpeed: 3,
+    bossLevel: false,
+  },
+  {
+    level: 5,
+    name: '第五关',
+    enemyCount: 420,
+    spawnInterval: 600,
+    enemySpeed: 3.5,
     bossLevel: true,
   },
 ];

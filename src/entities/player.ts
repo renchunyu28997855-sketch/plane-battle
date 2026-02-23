@@ -21,21 +21,21 @@ export class Player {
   health = 3;
   maxHealth = 3;
   
-  // 护盾
+  // 护盾（可叠加）
   shield = 0;
+  
+  // 速度加成（可叠加，每层减少15%射击间隔，最高5层）
+  speedLevel = 0;
+  
+  // 散弹层数（可叠加，最高3层）
+  multiShotLevel = 0;
+  
+  // 力量加成（可叠加，每层+1伤害）
+  powerLevel = 0;
   
   // 射击冷却
   private shootCooldown = 0;
   private baseShootInterval = 100; // 基础射击间隔（毫秒）
-  private currentShootInterval = 100; // 当前射击间隔
-  
-  // 子弹类型
-  private bulletType: 'normal' | 'spread' = 'normal';
-  private bulletTypeTimer = 0;
-  
-  // 子弹伤害倍数
-  private damageMultiplier = 1;
-  private damageTimer = 0;
   
   // 构造函数
   constructor(x: number, y: number, config: GameConfig) {
@@ -44,57 +44,47 @@ export class Player {
     this.maxHealth = config.playerHealth;
     this.health = config.playerHealth;
   }
-  
+
   // 重置玩家状态
   reset(x: number, y: number): void {
     this.x = x;
     this.y = y;
     this.health = this.maxHealth;
     this.shield = 0;
+    this.speedLevel = 0;
+    this.multiShotLevel = 0;
+    this.powerLevel = 0;
     this.shootCooldown = 0;
-    this.currentShootInterval = this.baseShootInterval;
-    this.bulletType = 'normal';
-    this.bulletTypeTimer = 0;
-    this.damageMultiplier = 1;
-    this.damageTimer = 0;
   }
-  
+
   // 射击
   shoot(bulletManager: BulletManager): void {
     if (this.shootCooldown <= 0) {
-      if (this.bulletType === 'spread') {
+      // 根据multiShotLevel决定发射方式
+      if (this.multiShotLevel >= 2) {
+        // 3发散弹
+        bulletManager.createSpreadBullet(this.x, this.y - this.height / 2);
+      } else if (this.multiShotLevel >= 1) {
+        // 2发散弹
         bulletManager.createSpreadBullet(this.x, this.y - this.height / 2);
       } else {
         bulletManager.createPlayerBullet(this.x, this.y - this.height / 2);
       }
-      this.shootCooldown = this.currentShootInterval;
+      
+      // 根据speedLevel计算射击间隔（每层减少15%）
+      const interval = this.baseShootInterval * (1 - this.speedLevel * 0.15);
+      this.shootCooldown = Math.max(20, interval); // 最低20ms
       soundManager.play('shoot');
     }
   }
-  
+
   // 更新
   update(deltaTime: number): void {
     if (this.shootCooldown > 0) {
       this.shootCooldown -= deltaTime;
     }
-    
-    // 更新子弹类型计时器
-    if (this.bulletTypeTimer > 0) {
-      this.bulletTypeTimer -= deltaTime;
-      if (this.bulletTypeTimer <= 0) {
-        this.bulletType = 'normal';
-      }
-    }
-    
-    // 更新伤害倍数计时器
-    if (this.damageTimer > 0) {
-      this.damageTimer -= deltaTime;
-      if (this.damageTimer <= 0) {
-        this.damageMultiplier = 1;
-      }
-    }
   }
-  
+
   // 受伤
   takeDamage(damage: number): void {
     // 如果有护盾，优先消耗护盾
@@ -102,48 +92,47 @@ export class Player {
       this.shield--;
       return;
     }
+
     this.health -= damage;
     if (this.health < 0) {
       this.health = 0;
     }
   }
-  
-  // 应用护盾效果
+
+  // 应用护盾效果（可叠加）
   applyShield(): void {
     this.shield++;
   }
-  
-  // 应用速度效果
-  applySpeed(duration: number): void {
-    this.currentShootInterval = this.baseShootInterval * 0.5; // 射击速度翻倍
-    // 5秒后恢复
-    setTimeout(() => {
-      this.currentShootInterval = this.baseShootInterval;
-    }, duration);
+
+  // 应用速度效果（可叠加，最高5层）
+  applySpeed(): void {
+    if (this.speedLevel < 5) {
+      this.speedLevel++;
+    }
   }
-  
-  // 应用散弹效果
-  applyMultiShot(duration: number): void {
-    this.bulletType = 'spread';
-    this.bulletTypeTimer = duration;
+
+  // 应用散弹效果（可叠加，最高3层）
+  applyMultiShot(): void {
+    if (this.multiShotLevel < 3) {
+      this.multiShotLevel++;
+    }
   }
-  
-  // 应用力量效果
-  applyPower(duration: number): void {
-    this.damageMultiplier = 2;
-    this.damageTimer = duration;
+
+  // 应用力量效果（可叠加，每层+1伤害）
+  applyPower(): void {
+    this.powerLevel++;
   }
-  
+
   // 获取伤害倍数
   getDamageMultiplier(): number {
-    return this.damageMultiplier;
+    return 1 + this.powerLevel;
   }
-  
+
   // 是否被摧毁
   isDestroyed(): boolean {
     return this.health <= 0;
   }
-  
+
   // 获取碰撞矩形
   getRect(): Rect {
     return {
@@ -153,21 +142,24 @@ export class Player {
       height: this.height,
     };
   }
-  
+
   // 检查碰撞
   checkCollision(other: { getRect: () => Rect }): boolean {
     return checkCollision(this.getRect(), other.getRect());
   }
-  
+
   // 渲染
   render(ctx: CanvasRenderingContext2D): void {
     // 绘制飞机主体
     this.drawBody(ctx);
     
+    // 绘制Buff指示器
+    this.drawBuffIndicators(ctx);
+    
     // 绘制生命值指示器
     this.drawHealthIndicator(ctx);
   }
-  
+
   // 绘制飞机主体
   private drawBody(ctx: CanvasRenderingContext2D): void {
     // 机身
@@ -196,7 +188,44 @@ export class Player {
       ctx.fill();
     }
   }
-  
+
+  // 绘制Buff指示器
+  private drawBuffIndicators(ctx: CanvasRenderingContext2D): void {
+    const startX = this.x - 40;
+    let indicatorY = this.y - this.height / 2 - 15;
+    
+    // 护盾显示
+    if (this.shield > 0) {
+      ctx.fillStyle = '#00ffff';
+      ctx.font = '12px Arial';
+      ctx.fillText(`护盾x${this.shield}`, startX, indicatorY);
+      indicatorY -= 15;
+    }
+    
+    // 速度显示
+    if (this.speedLevel > 0) {
+      ctx.fillStyle = '#ffff00';
+      ctx.font = '12px Arial';
+      ctx.fillText(`加速x${this.speedLevel}`, startX, indicatorY);
+      indicatorY -= 15;
+    }
+    
+    // 散弹显示
+    if (this.multiShotLevel > 0) {
+      ctx.fillStyle = '#9b59b6';
+      ctx.font = '12px Arial';
+      ctx.fillText(`散弹x${this.multiShotLevel}`, startX, indicatorY);
+      indicatorY -= 15;
+    }
+    
+    // 力量显示
+    if (this.powerLevel > 0) {
+      ctx.fillStyle = '#e74c3c';
+      ctx.font = '12px Arial';
+      ctx.fillText(`力量x${this.powerLevel}`, startX, indicatorY);
+    }
+  }
+
   // 绘制生命值指示器
   private drawHealthIndicator(ctx: CanvasRenderingContext2D): void {
     const indicatorWidth = 30;

@@ -275,13 +275,13 @@ export class GameEngine {
         this.player.applyShield();
         break;
       case 'speed':
-        this.player.applySpeed(5000); // 5秒
+        this.player.applySpeed();
         break;
       case 'multiShot':
-        this.player.applyMultiShot(5000); // 5秒
+        this.player.applyMultiShot();
         break;
       case 'power':
-        this.player.applyPower(5000); // 5秒
+        this.player.applyPower();
         break;
       case 'score':
         this.score += 100;
@@ -338,7 +338,7 @@ export class GameEngine {
     this.ctx.textAlign = 'left';
     this.ctx.fillText(`分数: ${this.score}`, 10, 25);
     this.ctx.fillText(`生命: ${this.player.health}`, 10, 50);
-    this.ctx.fillText(`关卡: ${this.currentLevel}/3`, 10, 75);
+    this.ctx.fillText(`关卡: ${this.currentLevel}/5`, 10, 75);
   }
   
   private renderMenu(): void {
@@ -377,7 +377,7 @@ export class GameEngine {
     this.ctx.fillStyle = '#ffffff';
     this.ctx.font = '20px Arial';
     this.ctx.fillText(`最终得分: ${this.score}`, this.config.canvasWidth / 2, this.config.canvasHeight / 2 + 20);
-    if (this.currentLevel >= 3) {
+    if (this.currentLevel >= 5) {
       this.ctx.fillStyle = '#ffd700';
       this.ctx.fillText('恭喜通关!', this.config.canvasWidth / 2, this.config.canvasHeight / 2 + 50);
     }

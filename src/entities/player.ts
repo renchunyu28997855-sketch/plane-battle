@@ -27,10 +27,10 @@ export class Player {
   // 速度加成（可叠加，每层减少15%射击间隔，最高5层）
   speedLevel = 0;
   
-  // 散弹层数（可叠加，最高3层）
+  // 散弹层数（可叠加，最高5层）
   multiShotLevel = 0;
   
-  // 力量加成（可叠加，每层+1伤害）
+  // 力量加成（可叠加，每层+1伤害，最高5层）
   powerLevel = 0;
   
   // 射击冷却
@@ -55,6 +55,13 @@ export class Player {
     this.multiShotLevel = 0;
     this.powerLevel = 0;
     this.shootCooldown = 0;
+  }
+
+  // 重置子弹buff（速度、散弹、力量互斥）
+  resetBulletBuffs(): void {
+    this.speedLevel = 0;
+    this.multiShotLevel = 0;
+    this.powerLevel = 0;
   }
 
   // 射击
@@ -111,16 +118,18 @@ export class Player {
     }
   }
 
-  // 应用散弹效果（可叠加，最高3层）
+  // 应用散弹效果（可叠加，最高5层）
   applyMultiShot(): void {
-    if (this.multiShotLevel < 3) {
+    if (this.multiShotLevel < 5) {
       this.multiShotLevel++;
     }
   }
 
-  // 应用力量效果（可叠加，每层+1伤害）
+  // 应用力量效果（可叠加，每层+1伤害，最高5层）
   applyPower(): void {
-    this.powerLevel++;
+    if (this.powerLevel < 5) {
+      this.powerLevel++;
+    }
   }
 
   // 获取伤害倍数
@@ -153,9 +162,6 @@ export class Player {
     // 绘制飞机主体
     this.drawBody(ctx);
     
-    // 绘制Buff指示器
-    this.drawBuffIndicators(ctx);
-    
     // 绘制生命值指示器
     this.drawHealthIndicator(ctx);
   }
@@ -186,43 +192,6 @@ export class Player {
       ctx.lineTo(this.x + 5, this.y + this.height / 2);
       ctx.closePath();
       ctx.fill();
-    }
-  }
-
-  // 绘制Buff指示器
-  private drawBuffIndicators(ctx: CanvasRenderingContext2D): void {
-    const startX = this.x - 40;
-    let indicatorY = this.y - this.height / 2 - 15;
-    
-    // 护盾显示
-    if (this.shield > 0) {
-      ctx.fillStyle = '#00ffff';
-      ctx.font = '12px Arial';
-      ctx.fillText(`护盾x${this.shield}`, startX, indicatorY);
-      indicatorY -= 15;
-    }
-    
-    // 速度显示
-    if (this.speedLevel > 0) {
-      ctx.fillStyle = '#ffff00';
-      ctx.font = '12px Arial';
-      ctx.fillText(`加速x${this.speedLevel}`, startX, indicatorY);
-      indicatorY -= 15;
-    }
-    
-    // 散弹显示
-    if (this.multiShotLevel > 0) {
-      ctx.fillStyle = '#9b59b6';
-      ctx.font = '12px Arial';
-      ctx.fillText(`散弹x${this.multiShotLevel}`, startX, indicatorY);
-      indicatorY -= 15;
-    }
-    
-    // 力量显示
-    if (this.powerLevel > 0) {
-      ctx.fillStyle = '#e74c3c';
-      ctx.font = '12px Arial';
-      ctx.fillText(`力量x${this.powerLevel}`, startX, indicatorY);
     }
   }
 

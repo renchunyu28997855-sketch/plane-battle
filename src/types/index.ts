@@ -67,6 +67,7 @@ export interface LevelConfig {
   spawnInterval: number;
   enemySpeed: number;
   bossLevel: boolean;
+  levelTime: number; // 关卡时间限制（秒）
 }
 
 // 默认游戏配置
@@ -91,6 +92,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 1200,
     enemySpeed: 1.5,
     bossLevel: false,
+    levelTime: 50,
   },
   {
     level: 2,
@@ -99,6 +101,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 1000,
     enemySpeed: 2,
     bossLevel: false,
+    levelTime: 50,
   },
   {
     level: 3,
@@ -107,6 +110,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 800,
     enemySpeed: 2.5,
     bossLevel: false,
+    levelTime: 50,
   },
   {
     level: 4,
@@ -115,6 +119,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 700,
     enemySpeed: 3,
     bossLevel: false,
+    levelTime: 50,
   },
   {
     level: 5,
@@ -123,5 +128,6 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
     spawnInterval: 600,
     enemySpeed: 3.5,
     bossLevel: true,
+    levelTime: 50,
   },
 ];

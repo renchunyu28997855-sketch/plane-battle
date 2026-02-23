@@ -39,11 +39,14 @@ export class GameEngine {
   private readonly fixedDeltaTime = 1000 / 60;
   private spawnTimer = 0;
   private enemiesSpawned = 0;
+  private levelTimer = 0; // 关卡剩余时间（秒）
+  private buffMessage = ''; // Buff 提示消息
+  private buffMessageTimer = 0; // Buff 消息显示时间
 
   constructor(canvas: HTMLCanvasElement, config: Partial<GameConfig> = {}) {
     this.ctx = canvas.getContext('2d')!;
     this.config = { ...DEFAULT_GAME_CONFIG, ...config };
-    this.levelConfig = LEVEL_CONFIGS[0];
+    this.levelConfig = { ...LEVEL_CONFIGS[0] };
     
     this.player = new Player(
       this.config.canvasWidth / 2,
@@ -112,6 +115,10 @@ export class GameEngine {
   }
   
   nextLevel(): void {
+    // 清理上一关的敌机和子弹
+    this.enemyManager.clear();
+    this.bulletManager.clear();
+    
     if (this.currentLevel < LEVEL_CONFIGS.length) {
       this.currentLevel++;
       this.loadLevel(this.currentLevel);
@@ -122,9 +129,17 @@ export class GameEngine {
   }
   
   private loadLevel(level: number): void {
-    this.levelConfig = LEVEL_CONFIGS[level - 1];
+    // 克隆关卡配置，避免修改原始数据
+    this.levelConfig = { ...LEVEL_CONFIGS[level - 1] };
     this.spawnTimer = 0;
     this.enemiesSpawned = 0;
+    this.levelTimer = this.levelConfig.levelTime; // 初始化关卡计时器
+    
+    // 根据关卡时间和敌机数量动态计算刷新间隔
+    // 确保在关卡时间内均匀刷完所有敌机
+    const calculatedInterval = (this.levelConfig.levelTime * 1000) / this.levelConfig.enemyCount;
+    this.levelConfig.spawnInterval = Math.floor(calculatedInterval);
+    
     this.enemyManager.setLevelConfig(this.levelConfig);
     this.player.reset(
       this.config.canvasWidth / 2,
@@ -157,6 +172,14 @@ export class GameEngine {
   
   private update(deltaTime: number): void {
     if (this.state !== 'playing') return;
+    
+    // 更新关卡计时器
+    this.levelTimer -= deltaTime / 1000;
+    
+    // 更新 buff 消息计时器
+    if (this.buffMessageTimer > 0) {
+      this.buffMessageTimer -= deltaTime;
+    }
     
     this.updatePlayer(deltaTime);
     this.player.update(deltaTime);
@@ -273,29 +296,52 @@ export class GameEngine {
     switch (type) {
       case 'shield':
         this.player.applyShield();
+        this.showBuffMessage('护盾 +1');
         break;
       case 'speed':
+        // 速度、散弹、力量互斥，新 buff 取消旧 buff
+        this.player.resetBulletBuffs();
         this.player.applySpeed();
+        this.showBuffMessage('加速');
         break;
       case 'multiShot':
+        // 速度、散弹、力量互斥，新 buff 取消旧 buff
+        this.player.resetBulletBuffs();
         this.player.applyMultiShot();
+        this.showBuffMessage('散弹');
         break;
       case 'power':
+        // 速度、散弹、力量互斥，新 buff 取消旧 buff
+        this.player.resetBulletBuffs();
         this.player.applyPower();
+        this.showBuffMessage('力量');
         break;
       case 'score':
         this.score += 100;
+        this.showBuffMessage('分数 +100');
         break;
     }
   }
+
+  // 显示 buff 消息
+  private showBuffMessage(message: string): void {
+    this.buffMessage = message;
+    this.buffMessageTimer = 1500; // 显示 1.5 秒
+  }
   
   private checkGameState(): void {
+    // 先检查玩家是否死亡
     if (this.player.isDestroyed()) {
+      soundManager.play('explosion'); // 玩家爆炸音效
       this.state = 'gameOver';
+      return;
     }
     
-    if (this.enemiesSpawned >= this.levelConfig.enemyCount && 
-        this.enemyManager.getEnemies().length === 0) {
+    // 检查是否通关：所有敌机生成完毕 AND 屏幕上没有敌机
+    const enemiesOnScreen = this.enemyManager.getEnemies().length;
+    const allSpawned = this.enemiesSpawned >= this.levelConfig.enemyCount;
+    
+    if (allSpawned && enemiesOnScreen === 0) {
       this.state = 'levelComplete';
     }
   }
@@ -339,6 +385,39 @@ export class GameEngine {
     this.ctx.fillText(`分数: ${this.score}`, 10, 25);
     this.ctx.fillText(`生命: ${this.player.health}`, 10, 50);
     this.ctx.fillText(`关卡: ${this.currentLevel}/5`, 10, 75);
+    this.ctx.fillText(`时间: ${Math.ceil(this.levelTimer)}秒`, 10, 100);
+    
+    // Buff 消息提示（屏幕中央）
+    if (this.buffMessageTimer > 0) {
+      this.ctx.textAlign = 'center';
+      this.ctx.fillStyle = '#ffff00';
+      this.ctx.font = '24px Arial';
+      this.ctx.fillText(this.buffMessage, this.config.canvasWidth / 2, this.config.canvasHeight / 2 - 100);
+    }
+    
+    // 右侧Buff状态显示
+    this.ctx.font = '16px Arial';
+    this.ctx.textAlign = 'right';
+    let buffY = 25;
+    if (this.player.shield > 0) {
+      this.ctx.fillStyle = '#00ffff';
+      this.ctx.fillText(`护盾: ${this.player.shield}`, this.config.canvasWidth - 10, buffY);
+      buffY += 20;
+    }
+    if (this.player.speedLevel > 0) {
+      this.ctx.fillStyle = '#ffff00';
+      this.ctx.fillText(`加速: ${this.player.speedLevel}`, this.config.canvasWidth - 10, buffY);
+      buffY += 20;
+    }
+    if (this.player.multiShotLevel > 0) {
+      this.ctx.fillStyle = '#9b59b6';
+      this.ctx.fillText(`散弹: ${this.player.multiShotLevel}`, this.config.canvasWidth - 10, buffY);
+      buffY += 20;
+    }
+    if (this.player.powerLevel > 0) {
+      this.ctx.fillStyle = '#e74c3c';
+      this.ctx.fillText(`力量: ${this.player.powerLevel}`, this.config.canvasWidth - 10, buffY);
+    }
   }
   
   private renderMenu(): void {

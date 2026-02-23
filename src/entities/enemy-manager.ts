@@ -29,6 +29,7 @@ export class EnemyManager {
       spawnInterval: 1500,
       enemySpeed: 2,
       bossLevel: false,
+      levelTime: 60,
     };
   }
 
